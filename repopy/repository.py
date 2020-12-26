@@ -89,6 +89,9 @@ class Repository(Generic[EntityType, FilterType, UpdatesType]):
     def update(self, updates: UpdatesType, filters: FilterType) -> int:
         """Update the provided fields on all records that match the given
         filters"""
+        updates_map = self._to_field_map(updates)
+        filters_map = self._to_field_map(filters)
+        return self._backend.update(updates_map, filters_map)
 
     def delete(self, filters: FilterType) -> int:
         """Remove all records from the repository that match the given filter"""
