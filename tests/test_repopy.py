@@ -24,7 +24,7 @@ class PersonUpdate:
     name: Optional[str] = None
 
 
-def setup_in_memory_backend():
+def setup_in_memory_backend() -> BackendProtocol[Person]:
     def copy_func(person: Person) -> Person:
         return Person(**dataclasses.asdict(person))
     return InMemory(copy_func)
@@ -43,25 +43,29 @@ def test_add(backend: BackendProtocol[Person]):
         backend,
     )
 
-    # And a test record
-    test_person = Person(
-        id='person-1',
-        name='Alice',
-        age=32,
-    )
+    # And several test records
+    persons = []
+    for i in range(0, 5):
+        test_person = Person(
+            id=f'person-{i}',
+            name=f'name-{i}',
+            age=50,
+        )
+        persons.append(test_person)
 
     # When add is called
-    person_repository.add(test_person)
+    person_repository.add(persons)
 
-    # Then the record should be returned when queried
-    persons = person_repository.query(PersonFilter(
-        name='Alice',
+    # Then all inserted records should be returned when queried
+    queried_persons = person_repository.query(PersonFilter(
+        age=50,
     ))
 
-    assert len(persons) == 1, \
-        "Expected a single record to be returned"
-    assert persons[0] == test_person, \
-        "Expected inserted record to be returned unaltered"
+    assert len(queried_persons) == 5, \
+        "Expected all inserted records to be returned"
+    for person in persons:
+        assert person in queried_persons, \
+            'Expected "{person.id}" to have been stored, but it wasn\'t'
 
 
 def test_query(backend: BackendProtocol[Person]):
@@ -81,7 +85,7 @@ def test_query(backend: BackendProtocol[Person]):
             name=f'name-{i}',
             age=25, # 25 yrs old
         )
-        person_repository.add(test_person)
+        person_repository.add([test_person])
         test_persons.append(test_person)
 
     for i in range(10, 20):
@@ -90,7 +94,7 @@ def test_query(backend: BackendProtocol[Person]):
             name=f'name-{i}',
             age=50 # 50 yrs old,
         )
-        person_repository.add(test_person)
+        person_repository.add([test_person])
         test_persons.append(test_person)
 
     # When a subset of records are queried
@@ -124,7 +128,7 @@ def test_query_obeys_limit(backend: BackendProtocol[Person]):
             name=f'name-{i}',
             age=25, # 25 yrs old
         )
-        person_repository.add(test_person)
+        person_repository.add([test_person])
         test_persons.append(test_person)
 
     # When queried with a limit < the number of records
@@ -152,7 +156,7 @@ def test_query_handles_large_limit(backend: BackendProtocol[Person]):
             name=f'name-{i}',
             age=25, # 25 yrs old
         )
-        person_repository.add(test_person)
+        person_repository.add([test_person])
         test_persons.append(test_person)
 
     # When queried with a limit > the number of records

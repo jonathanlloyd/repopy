@@ -24,7 +24,7 @@ class RepositoryProtocol(Protocol, Generic[EntityType, FilterType, UpdatesType])
     """Top-level protocol for the repository. Application code that depends on
     the repository should use this type"""
 
-    def add(self, entity: EntityType):
+    def add(self, entities: List[EntityType]):
         """Insert a new record into the repository"""
 
     def query(self, filters: FilterType, limit: int=None) -> List[EntityType]:
@@ -43,7 +43,7 @@ class BackendProtocol(Protocol, Generic[EntityType]):
     """Interface that must be implemented by storage backends for Repopy
     repositories"""
 
-    def add(self, entity: EntityType):
+    def add(self, entities: List[EntityType]):
         """Store a new record via this backend"""
 
     def query(
@@ -76,9 +76,9 @@ class Repository(Generic[EntityType, FilterType, UpdatesType]):
         self._backend = backend
         self._field_names = field_names
 
-    def add(self, entity: EntityType):
+    def add(self, entities: List[EntityType]):
         """Insert a new record into the repository"""
-        self._backend.add(entity)
+        self._backend.add(entities)
 
     def query(self, filters: FilterType, limit: int=None) -> List[EntityType]:
         """Return the records in the repository that match the given filters

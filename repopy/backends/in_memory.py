@@ -26,9 +26,10 @@ class InMemory(Generic[EntityType]):
         self._copy_func = copy_func
         self._entity_store = []
 
-    def add(self, entity: EntityType):
+    def add(self, entities: List[EntityType]):
         if self._copy_func:
-            self._entity_store.append(self._copy_func(entity))
+            for entity in entities:
+                self._entity_store.append(self._copy_func(entity))
 
     def query(
         self,
