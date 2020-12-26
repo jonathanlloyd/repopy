@@ -167,6 +167,7 @@ def test_query_handles_large_limit(backend: BackendProtocol[Person]):
     assert len(queried_persons) == 10, \
         f'Expected 10 records to be returned, got {len(queried_persons)}'
 
+
 def test_update(backend: BackendProtocol[Person]):
     # Given a repository
     person_repository = RepositoryFactory.create_repository(
@@ -228,3 +229,55 @@ def test_update(backend: BackendProtocol[Person]):
         person.name != 'new-name'
         for person in not_updated_records
     ]), 'Non-matching records should be unaltered'
+
+
+def test_delete(backend: BackendProtocol[Person]):
+    # Given a repository
+    person_repository = RepositoryFactory.create_repository(
+        Person,
+        PersonFilter,
+        PersonUpdate,
+        backend,
+    )
+
+    # In which several records have been inserted
+    test_persons = []
+    for i in range(0, 10):
+        test_person = Person(
+            id=f'person-{i}',
+            name=f'name-{i}',
+            age=25, # 25 yrs old
+        )
+        person_repository.add([test_person])
+        test_persons.append(test_person)
+
+    for i in range(10, 20):
+        test_person = Person(
+            id=f'person-{i}',
+            name=f'name-{i}',
+            age=50, # 50 yrs old
+        )
+        person_repository.add([test_person])
+        test_persons.append(test_person)
+
+    # When some of them are deleted
+    num_deleted = person_repository.delete(
+        PersonFilter(
+            age=25,
+        ),
+    )
+
+    # Then the count of deleted records should be correct
+    assert num_deleted == 10
+
+    # And the records that match the update should have been removed
+    deleted_records = person_repository.query(PersonFilter(
+        age=25,
+    ))
+    assert len(deleted_records) == 0
+
+    # And those that don't should be left
+    not_deleted_records = person_repository.query(PersonFilter(
+        age=50,
+    ))
+    assert len(not_deleted_records) == 10

@@ -63,7 +63,15 @@ class InMemory(Generic[EntityType]):
         return num_updated
 
     def delete(self, filters: Mapping[str, Field]) -> int:
-        pass
+        num_deleted = 0
+        new_entities = []
+        for entity in self._entity_store:
+            if self._matches(filters, entity):
+                num_deleted += 1
+            else:
+                new_entities.append(entity)
+        self._entity_store = new_entities
+        return num_deleted
 
     def _matches(self, filters: Mapping[str, Field], entity: EntityType): # pylint: disable=no-self-use
         return all([
