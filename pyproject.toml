@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "repopy"
 version = "0.1.0"
-description = ""
+description = "Interface (and default implementation set) for the Repository Pattern in Pytho"
 authors = ["Jonathan Lloyd <jonathan@thisisjonathan.com>"]
 
 [tool.poetry.dependencies]
