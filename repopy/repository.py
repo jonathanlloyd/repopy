@@ -26,7 +26,7 @@ class RepositoryProtocol(Protocol, Generic[EntityType, FilterType, UpdatesType])
     the repository should use this type"""
 
     def add(self, entities: List[EntityType]):
-        """Insert a new record into the repository"""
+        """Insert one or more new records into the repository"""
 
     def query(self, filters: FilterType, limit: int = None) -> List[EntityType]:
         """Return the records in the repository that match the given filters
@@ -45,7 +45,7 @@ class BackendProtocol(Protocol, Generic[EntityType]):
     repositories"""
 
     def add(self, entities: List[EntityType]):
-        """Store a new record via this backend"""
+        """Store one or more new records via this backend"""
 
     def query(
         self,
@@ -78,7 +78,7 @@ class Repository(Generic[EntityType, FilterType, UpdatesType]):
         self._field_names = field_names
 
     def add(self, entities: List[EntityType]):
-        """Insert a new record into the repository"""
+        """Insert one or more new records into the repository"""
         self._backend.add(entities)
 
     def query(self, filters: FilterType, limit: int=None) -> List[EntityType]:
