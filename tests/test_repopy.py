@@ -1,11 +1,12 @@
 import dataclasses
 from dataclasses import dataclass
-from typing import Optional
+from typing import Any, Dict, Optional
 
 import pytest # type: ignore
+from sqlalchemy import create_engine, MetaData # type: ignore
 
 from repopy import BackendProtocol, RepositoryFactory
-from repopy.backends import InMemory
+from repopy.backends import InMemory, SQLAlchemy
 
 
 @dataclass
@@ -29,7 +30,35 @@ def setup_in_memory_backend() -> BackendProtocol[Person]:
         return Person(**dataclasses.asdict(person))
     return InMemory(copy_func)
 
-@pytest.fixture(params=[setup_in_memory_backend])
+def setup_sqlalchemy_backend() -> BackendProtocol[Person]:
+    class PersonCodec:
+        @staticmethod
+        def to_dict(person: Person) -> Dict[str, Any]:
+            return dataclasses.asdict(person)
+
+        @staticmethod
+        def from_dict(data: Dict[str, Any]) -> Person:
+            return Person(**data)
+
+    engine = create_engine('sqlite:///:memory:')
+    with engine.connect() as conn:
+        conn.execute("""
+        CREATE TABLE person (
+            id VARCHAR(255) PRIMARY KEY,
+            name TEXT,
+            age INTEGER
+        );
+        """)
+
+    meta = MetaData()
+    return SQLAlchemy(
+        PersonCodec,
+        meta,
+        engine,
+        'person',
+    )
+
+@pytest.fixture(params=[setup_in_memory_backend, setup_sqlalchemy_backend])
 def backend(request):
     return request.param()
 
