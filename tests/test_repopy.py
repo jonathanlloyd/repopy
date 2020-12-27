@@ -90,7 +90,7 @@ def test_incompatible_filter_type(backend: BackendProtocol[Person]):
 
     # Then a ValueError should be raised
     assert str(e.value) == \
-        'Update type not compatible: field "not_count" not in entity type'
+        'Filter type not compatible: field "not_count" not in entity type'
 
     # When a repository is created with a filter field with a type that does
     # not match the field in the entity type
@@ -103,6 +103,60 @@ def test_incompatible_filter_type(backend: BackendProtocol[Person]):
             SomeType,
             BadFilterWrongType,
             SomeTypeUpdate,
+            backend,
+        )
+
+    # Then a ValueError should be raised
+    assert str(e.value) == \
+        (
+            'Filter type not compatible: field "count" should have type '
+            + '<class \'int\'>/typing.Union[int, NoneType]'
+        )
+
+
+def test_incompatible_update_type(backend: BackendProtocol[Person]):
+    # Given some domain types
+    @dataclass
+    class SomeType:
+        id: str
+        count: int
+
+    @dataclass
+    class SomeTypeFilter:
+        count: Optional[int]
+
+    @dataclass
+    class SomeTypeUpdate:
+        count: Optional[int]
+
+    # When a repository is created with an update field not in the entity type
+    @dataclass
+    class BadUpdateBogusField:
+        not_count: Optional[int]
+
+    with pytest.raises(ValueError) as e:
+        RepositoryFactory.create_repository(
+            SomeType,
+            SomeTypeFilter,
+            BadUpdateBogusField,
+            backend,
+        )
+
+    # Then a ValueError should be raised
+    assert str(e.value) == \
+        'Update type not compatible: field "not_count" not in entity type'
+
+    # When a repository is created with a filter field with a type that does
+    # not match the field in the entity type
+    @dataclass
+    class BadUpdateWrongType:
+        count: Optional[bool]
+
+    with pytest.raises(ValueError) as e:
+        RepositoryFactory.create_repository(
+            SomeType,
+            SomeTypeFilter,
+            BadUpdateWrongType,
             backend,
         )
 

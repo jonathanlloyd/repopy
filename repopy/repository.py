@@ -114,7 +114,7 @@ class RepositoryFactory(Generic[EntityType, FilterType, UpdatesType]): # pylint:
     def create_repository(
         entity_cls: Type[EntityType],
         filter_cls: Type[FilterType],
-        _updates_cls: Type[UpdatesType],
+        updates_cls: Type[UpdatesType],
         backend: BackendProtocol,
     ) -> Repository[EntityType, FilterType, UpdatesType]:
         """Create a new repository with the provided types and backend"""
@@ -127,6 +127,19 @@ class RepositoryFactory(Generic[EntityType, FilterType, UpdatesType]): # pylint:
         for field_name, field_type in filter_cls.__annotations__.items():
             if field_name not in fields:
                 raise ValueError(
+                    f'Filter type not compatible: field "{field_name}"'
+                    + ' not in entity type'
+                )
+            desired_type = fields[field_name]
+            if field_type not in (desired_type, Optional[desired_type]):
+                raise ValueError(
+                    f'Filter type not compatible: field "{field_name}"'
+                    + f' should have type {desired_type}/{Optional[desired_type]}'
+                )
+
+        for field_name, field_type in updates_cls.__annotations__.items():
+            if field_name not in fields:
+                raise ValueError(
                     f'Update type not compatible: field "{field_name}"'
                     + ' not in entity type'
                 )
@@ -136,9 +149,5 @@ class RepositoryFactory(Generic[EntityType, FilterType, UpdatesType]): # pylint:
                     f'Update type not compatible: field "{field_name}"'
                     + f' should have type {desired_type}/{Optional[desired_type]}'
                 )
-
-#        for field_name, field_type in updates_cls.__annotations__.items():
-#            if fields.get(field_name) != field_type:
-#                raise ValueError(f'Field \"{field_name}\" in updates class does not match entity')
 
         return Repository(backend, list(fields.keys()))
