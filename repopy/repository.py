@@ -14,6 +14,7 @@ from typing import (
 )
 
 Field = Union[int, float, bool, str]
+FIELD_TYPES = (int, float, bool, str)
 
 EntityType = TypeVar('EntityType')
 FilterType = TypeVar('FilterType', contravariant=True)
@@ -27,7 +28,7 @@ class RepositoryProtocol(Protocol, Generic[EntityType, FilterType, UpdatesType])
     def add(self, entities: List[EntityType]):
         """Insert a new record into the repository"""
 
-    def query(self, filters: FilterType, limit: int=None) -> List[EntityType]:
+    def query(self, filters: FilterType, limit: int = None) -> List[EntityType]:
         """Return the records in the repository that match the given filters
         (up to the limit, if given)"""
 
@@ -112,24 +113,30 @@ class RepositoryFactory(Generic[EntityType, FilterType, UpdatesType]): # pylint:
     @staticmethod
     def create_repository(
         entity_cls: Type[EntityType],
-        _filter_cls: Type[FilterType],
+        filter_cls: Type[FilterType],
         _updates_cls: Type[UpdatesType],
         backend: BackendProtocol,
     ) -> Repository[EntityType, FilterType, UpdatesType]:
         """Create a new repository with the provided types and backend"""
         fields: Dict[str, Field] = {}
         for field_name, field_type in entity_cls.__annotations__.items():
+            if field_type not in FIELD_TYPES:
+                raise ValueError(f'Field type "{field_type}" not supported')
             fields[field_name] = field_type
-#        fields: Dict[str, Field] = {}
-#        for field_name, field_type in entity_cls.__annotations__.items():
-#            if field_type not in Field.__args__:
-#                raise ValueError(f'Field type \"{field_type}\" not supported')
-#            fields[field_name] = field_type
-#
-#        for field_name, field_type in filter_cls.__annotations__.items():
-#            if fields.get(field_name) != field_type:
-#                raise ValueError(f'Field \"{field_name}\" in filter class does not match entity')
-#
+
+        for field_name, field_type in filter_cls.__annotations__.items():
+            if field_name not in fields:
+                raise ValueError(
+                    f'Update type not compatible: field "{field_name}"'
+                    + ' not in entity type'
+                )
+            desired_type = fields[field_name]
+            if field_type not in (desired_type, Optional[desired_type]):
+                raise ValueError(
+                    f'Update type not compatible: field "{field_name}"'
+                    + f' should have type {desired_type}/{Optional[desired_type]}'
+                )
+
 #        for field_name, field_type in updates_cls.__annotations__.items():
 #            if fields.get(field_name) != field_type:
 #                raise ValueError(f'Field \"{field_name}\" in updates class does not match entity')
