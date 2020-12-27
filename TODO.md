@@ -7,7 +7,7 @@
   - [x] Validate entity field types are supported
   - [x] Validate filter fields match entity type
   - [x] Validate update fields match entity type
- - [ ] SQLAlchemy backend
+ - [x] SQLAlchemy backend
 
 # Future work
  - [ ] Add unique ID support
