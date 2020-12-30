@@ -139,6 +139,37 @@ def test_query(backend: BackendProtocol[Person]):
             f'Expected "{person.id}" to be in results, but it wasn\'t'
 
 
+def test_query_multiple_filters(backend: BackendProtocol[Person]):
+    # Given a repository
+    person_repository = RepositoryFactory.create_repository(
+        Person,
+        PersonFilter,
+        PersonUpdate,
+        backend,
+    )
+
+    # In which several records have been inserted
+    test_persons = []
+    for i in range(0, 10):
+        test_person = Person(
+            id=f'person-{i}',
+            name=f'name-{i}',
+            age=25, # 25 yrs old
+        )
+        person_repository.add([test_person])
+        test_persons.append(test_person)
+
+    # When a record is queried with multiple filters
+    queried_persons = person_repository.query(PersonFilter(
+        name='name-0',
+        age=25,
+    ))
+
+    # Then that record should be returned
+    assert len(queried_persons) == 1
+    assert queried_persons[0].id == 'person-0'
+
+
 def test_query_obeys_limit(backend: BackendProtocol[Person]):
     # Given a repository
     person_repository = RepositoryFactory.create_repository(
@@ -259,6 +290,48 @@ def test_update(backend: BackendProtocol[Person]):
     ]), 'Non-matching records should be unaltered'
 
 
+def test_update_multiple_filters(backend: BackendProtocol[Person]):
+    # Given a repository
+    person_repository = RepositoryFactory.create_repository(
+        Person,
+        PersonFilter,
+        PersonUpdate,
+        backend,
+    )
+
+    # In which several records have been inserted
+    test_persons = []
+    for i in range(0, 10):
+        test_person = Person(
+            id=f'person-{i}',
+            name=f'name-{i}',
+            age=25, # 25 yrs old
+        )
+        person_repository.add([test_person])
+        test_persons.append(test_person)
+
+    # When one of them is updated via multiple filters
+    num_updated = person_repository.update(
+        PersonUpdate(
+            name='new-name',
+        ),
+        PersonFilter(
+            name='name-0',
+            age=25,
+        ),
+    )
+
+    # Then the count of updated records should be correct
+    assert num_updated == 1
+
+    # And the correct record should have been updated
+    updated_persons = person_repository.query(PersonFilter(
+        name='new-name',
+    ))
+    assert len(updated_persons) == 1
+    assert updated_persons[0].id == 'person-0'
+
+
 def test_delete(backend: BackendProtocol[Person]):
     # Given a repository
     person_repository = RepositoryFactory.create_repository(
@@ -309,3 +382,38 @@ def test_delete(backend: BackendProtocol[Person]):
         age=50,
     ))
     assert len(not_deleted_records) == 10
+
+def test_delete_multiple_filters(backend: BackendProtocol[Person]):
+    # Given a repository
+    person_repository = RepositoryFactory.create_repository(
+        Person,
+        PersonFilter,
+        PersonUpdate,
+        backend,
+    )
+
+    # In which several records have been inserted
+    test_persons = []
+    for i in range(0, 10):
+        test_person = Person(
+            id=f'person-{i}',
+            name=f'name-{i}',
+            age=25, # 25 yrs old
+        )
+        person_repository.add([test_person])
+        test_persons.append(test_person)
+
+    # When a specific record is deleted with multiple filters
+    num_deleted = person_repository.delete(
+        PersonFilter(
+            name='name-0',
+            age=25,
+        ),
+    )
+
+    # Then that record should be removed
+    assert num_deleted == 1
+    queried_persons = person_repository.query(PersonFilter(
+        name='name-0',
+    ))
+    assert len(queried_persons) == 0

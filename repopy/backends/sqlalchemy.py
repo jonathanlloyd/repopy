@@ -70,10 +70,10 @@ class SQLAlchemy(Generic[EntityType]):
 
         select = self._table.select()
         if filters:
-            select = select.where(*[
-                getattr(self._table.c, filter_name) == filter_value
-                for filter_name, filter_value in filters.items()
-            ])
+            for filter_name, filter_value in filters.items():
+                select = select.where(
+                    getattr(self._table.c, filter_name) == filter_value
+                )
         if limit is not None:
             select = select.limit(limit)
 
@@ -97,10 +97,10 @@ class SQLAlchemy(Generic[EntityType]):
             for field_name, new_value in updates.items()
         })
         if filters:
-            update = update.where(*[
-                getattr(self._table.c, filter_name) == filter_value
-                for filter_name, filter_value in filters.items()
-            ])
+            for filter_name, filter_value in filters.items():
+                update = update.where(
+                    getattr(self._table.c, filter_name) == filter_value
+                )
 
         results = conn.execute(update)
         return results.rowcount
@@ -109,10 +109,10 @@ class SQLAlchemy(Generic[EntityType]):
         conn = self._engine.connect()
         delete = self._table.delete(None)
         if filters:
-            delete = delete.where(*[
-                getattr(self._table.c, filter_name) == filter_value
-                for filter_name, filter_value in filters.items()
-            ])
+            for filter_name, filter_value in filters.items():
+                delete = delete.where(
+                    getattr(self._table.c, filter_name) == filter_value
+                )
         results = conn.execute(delete)
         return results.rowcount
 
