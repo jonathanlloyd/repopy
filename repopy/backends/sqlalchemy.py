@@ -10,6 +10,7 @@ from typing import (
     Optional,
     Protocol,
     Type,
+    TypeVar,
 )
 
 from sqlalchemy import Table # type: ignore
@@ -30,6 +31,24 @@ class DictCodec(Protocol, Generic[EntityType]):
     @staticmethod
     def to_dict(entity: EntityType) -> Dict[str, Any]:
         pass
+
+    @staticmethod
+    def map_field(field_name: str) -> str:
+        pass
+
+
+DictValueType = TypeVar('DictValueType')
+
+def type_safe_get(
+    data: Dict[str, Any],
+    field_name: str,
+    field_type: Type[DictValueType],
+) -> DictValueType:
+    """Utility function for creating DictCodecs - helps to convert dicts to
+    model types in a type safe manner"""
+    value = data.get(field_name)
+    assert isinstance(value, field_type)
+    return value
 
 
 class SQLAlchemy(Generic[EntityType]):
@@ -72,7 +91,10 @@ class SQLAlchemy(Generic[EntityType]):
         if filters:
             for filter_name, filter_value in filters.items():
                 select = select.where(
-                    getattr(self._table.c, filter_name) == filter_value
+                    getattr(
+                        self._table.c,
+                        self._codec.map_field(filter_name),
+                    ) == filter_value
                 )
         if limit is not None:
             select = select.limit(limit)
@@ -93,13 +115,16 @@ class SQLAlchemy(Generic[EntityType]):
 
         conn = self._engine.connect()
         update = self._table.update(None).values({
-            getattr(self._table.c, field_name): new_value
+            getattr(self._table.c, self._codec.map_field(field_name)): new_value
             for field_name, new_value in updates.items()
         })
         if filters:
             for filter_name, filter_value in filters.items():
                 update = update.where(
-                    getattr(self._table.c, filter_name) == filter_value
+                    getattr(
+                        self._table.c,
+                        self._codec.map_field(filter_name),
+                    ) == filter_value
                 )
 
         results = conn.execute(update)
@@ -111,10 +136,14 @@ class SQLAlchemy(Generic[EntityType]):
         if filters:
             for filter_name, filter_value in filters.items():
                 delete = delete.where(
-                    getattr(self._table.c, filter_name) == filter_value
+                    getattr(
+                        self._table.c,
+                        self._codec.map_field(filter_name),
+                    ) == filter_value
                 )
         results = conn.execute(delete)
         return results.rowcount
+
 
 def _row2dict(row):
     data = {}

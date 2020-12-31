@@ -1,17 +1,18 @@
 import dataclasses
 from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Type, TypeVar
 
 import pytest # type: ignore
 from sqlalchemy import create_engine, MetaData # type: ignore
 
 from repopy import BackendProtocol, RepositoryFactory
 from repopy.backends import InMemory, SQLAlchemy
+from repopy.backends.sqlalchemy import type_safe_get
 
 
 @dataclass
 class Person:
-    id: str
+    person_id: str
     name: str
     age: int
 
@@ -34,18 +35,34 @@ def setup_sqlalchemy_backend() -> BackendProtocol[Person]:
     class PersonCodec:
         @staticmethod
         def to_dict(person: Person) -> Dict[str, Any]:
-            return dataclasses.asdict(person)
+            return {
+                'id': person.person_id,
+                'full_name': person.name,
+                'age': person.age,
+            }
 
         @staticmethod
         def from_dict(data: Dict[str, Any]) -> Person:
-            return Person(**data)
+            return Person(
+                person_id=type_safe_get(data, 'id', str),
+                name=type_safe_get(data, 'full_name', str),
+                age=type_safe_get(data, 'age', int),
+            )
+
+        @staticmethod
+        def map_field(field_name: str) -> str:
+            if field_name == 'person_id':
+                return 'id'
+            elif field_name == 'name':
+                return 'full_name'
+            return field_name
 
     engine = create_engine('sqlite:///:memory:')
     with engine.connect() as conn:
         conn.execute("""
         CREATE TABLE person (
             id VARCHAR(255) PRIMARY KEY,
-            name TEXT,
+            full_name TEXT,
             age INTEGER
         );
         """)
@@ -76,7 +93,7 @@ def test_add(backend: BackendProtocol[Person]):
     persons = []
     for i in range(0, 5):
         test_person = Person(
-            id=f'person-{i}',
+            person_id=f'person-{i}',
             name=f'name-{i}',
             age=50,
         )
@@ -94,7 +111,7 @@ def test_add(backend: BackendProtocol[Person]):
         "Expected all inserted records to be returned"
     for person in persons:
         assert person in queried_persons, \
-            'Expected "{person.id}" to have been stored, but it wasn\'t'
+            'Expected "{person.person_id}" to have been stored, but it wasn\'t'
 
 
 def test_query(backend: BackendProtocol[Person]):
@@ -110,7 +127,7 @@ def test_query(backend: BackendProtocol[Person]):
     test_persons = []
     for i in range(0, 10):
         test_person = Person(
-            id=f'person-{i}',
+            person_id=f'person-{i}',
             name=f'name-{i}',
             age=25, # 25 yrs old
         )
@@ -119,7 +136,7 @@ def test_query(backend: BackendProtocol[Person]):
 
     for i in range(10, 20):
         test_person = Person(
-            id=f'person-{i}',
+            person_id=f'person-{i}',
             name=f'name-{i}',
             age=50 # 50 yrs old,
         )
@@ -136,7 +153,7 @@ def test_query(backend: BackendProtocol[Person]):
         f'Expected 10 records to be returned, got {len(queried_persons)}'
     for person in test_persons[10:]:
         assert person in queried_persons, \
-            f'Expected "{person.id}" to be in results, but it wasn\'t'
+            f'Expected "{person.person_id}" to be in results, but it wasn\'t'
 
 
 def test_query_multiple_filters(backend: BackendProtocol[Person]):
@@ -152,7 +169,7 @@ def test_query_multiple_filters(backend: BackendProtocol[Person]):
     test_persons = []
     for i in range(0, 10):
         test_person = Person(
-            id=f'person-{i}',
+            person_id=f'person-{i}',
             name=f'name-{i}',
             age=25, # 25 yrs old
         )
@@ -167,7 +184,7 @@ def test_query_multiple_filters(backend: BackendProtocol[Person]):
 
     # Then that record should be returned
     assert len(queried_persons) == 1
-    assert queried_persons[0].id == 'person-0'
+    assert queried_persons[0].person_id == 'person-0'
 
 
 def test_query_obeys_limit(backend: BackendProtocol[Person]):
@@ -183,7 +200,7 @@ def test_query_obeys_limit(backend: BackendProtocol[Person]):
     test_persons = []
     for i in range(0, 10):
         test_person = Person(
-            id=f'person-{i}',
+            person_id=f'person-{i}',
             name=f'name-{i}',
             age=25, # 25 yrs old
         )
@@ -211,7 +228,7 @@ def test_query_handles_large_limit(backend: BackendProtocol[Person]):
     test_persons = []
     for i in range(0, 10):
         test_person = Person(
-            id=f'person-{i}',
+            person_id=f'person-{i}',
             name=f'name-{i}',
             age=25, # 25 yrs old
         )
@@ -240,7 +257,7 @@ def test_update(backend: BackendProtocol[Person]):
     test_persons = []
     for i in range(0, 10):
         test_person = Person(
-            id=f'person-{i}',
+            person_id=f'person-{i}',
             name=f'name-{i}',
             age=25, # 25 yrs old
         )
@@ -249,7 +266,7 @@ def test_update(backend: BackendProtocol[Person]):
 
     for i in range(10, 20):
         test_person = Person(
-            id=f'person-{i}',
+            person_id=f'person-{i}',
             name=f'name-{i}',
             age=50, # 50 yrs old
         )
@@ -303,7 +320,7 @@ def test_update_multiple_filters(backend: BackendProtocol[Person]):
     test_persons = []
     for i in range(0, 10):
         test_person = Person(
-            id=f'person-{i}',
+            person_id=f'person-{i}',
             name=f'name-{i}',
             age=25, # 25 yrs old
         )
@@ -329,7 +346,7 @@ def test_update_multiple_filters(backend: BackendProtocol[Person]):
         name='new-name',
     ))
     assert len(updated_persons) == 1
-    assert updated_persons[0].id == 'person-0'
+    assert updated_persons[0].person_id == 'person-0'
 
 
 def test_delete(backend: BackendProtocol[Person]):
@@ -345,7 +362,7 @@ def test_delete(backend: BackendProtocol[Person]):
     test_persons = []
     for i in range(0, 10):
         test_person = Person(
-            id=f'person-{i}',
+            person_id=f'person-{i}',
             name=f'name-{i}',
             age=25, # 25 yrs old
         )
@@ -354,7 +371,7 @@ def test_delete(backend: BackendProtocol[Person]):
 
     for i in range(10, 20):
         test_person = Person(
-            id=f'person-{i}',
+            person_id=f'person-{i}',
             name=f'name-{i}',
             age=50, # 50 yrs old
         )
@@ -396,7 +413,7 @@ def test_delete_multiple_filters(backend: BackendProtocol[Person]):
     test_persons = []
     for i in range(0, 10):
         test_person = Person(
-            id=f'person-{i}',
+            person_id=f'person-{i}',
             name=f'name-{i}',
             age=25, # 25 yrs old
         )
