@@ -1,10 +1,12 @@
-import dataclasses
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Dict, Optional, Type, TypeVar
+import dataclasses
+import os
 
 import pytest # type: ignore
 from sqlalchemy import create_engine, MetaData # type: ignore
+
 from repopy import BackendProtocol, RepositoryFactory
 from repopy.backends import InMemory, SQLAlchemy
 from repopy.backends.sqlalchemy import optional_type_safe_get, type_safe_get
@@ -64,7 +66,8 @@ def setup_sqlalchemy_backend() -> BackendProtocol[Person]:
                 return 'full_name'
             return field_name
 
-    engine = create_engine('postgresql://user:pass@localhost:5432/test')
+    database_url = os.environ['DATABASE_URL']
+    engine = create_engine(database_url)
     with engine.connect() as conn:
         conn.execute("""
         DROP TABLE IF EXISTS person;

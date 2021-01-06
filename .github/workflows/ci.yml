@@ -17,6 +17,19 @@ jobs:
       matrix:
         python-version: ['3.8']
 
+    services:
+      postgres:
+        image: bitnami/postgresql:12
+        env:
+          POSTGRESQL_USER: user
+          POSTGRESQL_PASSWORD: pass
+          POSTGRESQL_DATABASE: test_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
     - uses: actions/checkout@v2
     - name: Set up Python ${{ matrix.python-version }}
@@ -33,3 +46,5 @@ jobs:
       run: make typecheck
     - name: Test
       run: make test
+      env:
+        DATABASE_URL: "postgresql://user:pass@postgres/test_db"
