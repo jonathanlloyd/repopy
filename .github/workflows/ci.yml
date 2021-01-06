@@ -19,11 +19,11 @@ jobs:
 
     services:
       postgres:
-        image: bitnami/postgresql:12
+        image: postgres:12
         env:
-          POSTGRESQL_USER: user
-          POSTGRESQL_PASSWORD: pass
-          POSTGRESQL_DATABASE: test_db
+          POSTGRES_USER: user
+          POSTGRES_PASSWORD: pass
+          POSTGRES_DB: test_db
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
