@@ -49,4 +49,4 @@ jobs:
     - name: Test
       run: make test
       env:
-        DATABASE_URL: "postgresql://user:pass@postgres/test_db"
+        DATABASE_URL: "postgresql://user:pass@localhost/test_db"
