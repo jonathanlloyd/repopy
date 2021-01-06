@@ -1,13 +1,13 @@
 import dataclasses
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any, Dict, Optional, Type, TypeVar
 
 import pytest # type: ignore
 from sqlalchemy import create_engine, MetaData # type: ignore
-
 from repopy import BackendProtocol, RepositoryFactory
 from repopy.backends import InMemory, SQLAlchemy
-from repopy.backends.sqlalchemy import type_safe_get
+from repopy.backends.sqlalchemy import optional_type_safe_get, type_safe_get
 
 
 @dataclass
@@ -15,6 +15,7 @@ class Person:
     person_id: str
     name: str
     age: int
+    soft_deleted_at: Optional[datetime] = None
 
 @dataclass
 class PersonFilter:
@@ -39,6 +40,7 @@ def setup_sqlalchemy_backend() -> BackendProtocol[Person]:
                 'id': person.person_id,
                 'full_name': person.name,
                 'age': person.age,
+                'soft_deleted_at': person.soft_deleted_at,
             }
 
         @staticmethod
@@ -47,6 +49,11 @@ def setup_sqlalchemy_backend() -> BackendProtocol[Person]:
                 person_id=type_safe_get(data, 'id', str),
                 name=type_safe_get(data, 'full_name', str),
                 age=type_safe_get(data, 'age', int),
+                soft_deleted_at=optional_type_safe_get(
+                    data,
+                    'soft_deleted_at',
+                    datetime,
+                ),
             )
 
         @staticmethod
@@ -57,13 +64,15 @@ def setup_sqlalchemy_backend() -> BackendProtocol[Person]:
                 return 'full_name'
             return field_name
 
-    engine = create_engine('sqlite:///:memory:')
+    engine = create_engine('postgresql://user:pass@localhost:5432/test')
     with engine.connect() as conn:
         conn.execute("""
+        DROP TABLE IF EXISTS person;
         CREATE TABLE person (
             id VARCHAR(255) PRIMARY KEY,
             full_name TEXT,
-            age INTEGER
+            age INTEGER,
+            soft_deleted_at TIMESTAMP
         );
         """)
 
@@ -434,3 +443,34 @@ def test_delete_multiple_filters(backend: BackendProtocol[Person]):
         name='name-0',
     ))
     assert len(queried_persons) == 0
+
+
+def test_datetime_supported(backend: BackendProtocol[Person]):
+    # Given a repository
+    person_repository = RepositoryFactory.create_repository(
+        Person,
+        PersonFilter,
+        PersonUpdate,
+        backend,
+    )
+
+    # In which a record with a datetime field has been inserted
+    test_date = datetime.strptime('01/01/2021 13:00:00', "%d/%m/%Y %H:%M:%S")
+    test_person = Person(
+        person_id='person-0',
+        name='name-0',
+        age=25,
+        soft_deleted_at=test_date,
+    )
+    person_repository.add([test_person])
+
+    # When that record is queried
+    queried_persons = person_repository.query(PersonFilter(
+        name='name-0',
+    ))
+
+    # Then the datetime field should be returned correctly
+    assert len(queried_persons) == 1
+    queried_person = queried_persons[0]
+
+    assert queried_person.soft_deleted_at == test_date
