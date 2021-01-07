@@ -1,0 +1,23 @@
+#!/bin/bash
+
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+[ -d build ] || mkdir build
+
+docker rm -f repopy_test 2>/dev/null || true
+docker run --rm -d \
+	--name repopy_test \
+	-p 15432:5432 \
+	-e POSTGRESQL_USER=user \
+	-e POSTGRESQL_PASSWORD=pass \
+	-e POSTGRESQL_DATABASE=test_db \
+	bitnami/postgresql:12
+
+./scripts/wait-for-it localhost:15432 --timeout=120 --strict -- echo 'database is ready'
+sleep 2
+
+DATABASE_URL="postgresql://user:pass@localhost:15432/test_db" \
+	poetry run pytest .
+
+docker rm -f repopy_test
