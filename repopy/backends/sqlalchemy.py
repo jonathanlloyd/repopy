@@ -51,6 +51,18 @@ def type_safe_get(
     return value
 
 
+def optional_type_safe_get(
+    data: Dict[str, Any],
+    field_name: str,
+    field_type: Type[DictValueType],
+) -> Optional[DictValueType]:
+    """Utility function for creating DictCodecs - helps to convert dicts to
+    model types in a type safe manner"""
+    value = data.get(field_name)
+    assert isinstance(value, field_type) or value is None
+    return value
+
+
 class SQLAlchemy(Generic[EntityType]):
     """SQLAlchemy based backend for RDBMS support"""
     _codec: Type[DictCodec[EntityType]]

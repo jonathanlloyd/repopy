@@ -1,5 +1,6 @@
 """Top-level classes and protocols for Repopy"""
 
+from datetime import datetime
 from typing import (
     Any,
     Dict,
@@ -11,10 +12,11 @@ from typing import (
     Type,
     TypeVar,
     Union,
+    get_args,
 )
 
-Field = Union[int, float, bool, str]
-FIELD_TYPES = (int, float, bool, str)
+Field = Union[int, float, bool, str, datetime]
+FIELD_TYPES = (int, float, bool, str, datetime)
 
 EntityType = TypeVar('EntityType')
 FilterType = TypeVar('FilterType', contravariant=True)
@@ -120,7 +122,14 @@ class RepositoryFactory(Generic[EntityType, FilterType, UpdatesType]): # pylint:
         """Create a new repository with the provided types and backend"""
         fields: Dict[str, Field] = {}
         for field_name, field_type in entity_cls.__annotations__.items():
-            if field_type not in FIELD_TYPES:
+            type_args = get_args(field_type)
+            is_optional_type = len(type_args) == 2 and type_args[1] == type(None)
+            if is_optional_type:
+                type_to_check = type_args[0]
+            else:
+                type_to_check = field_type
+
+            if type_to_check not in FIELD_TYPES:
                 raise ValueError(f'Field type "{field_type}" not supported')
             fields[field_name] = field_type
 
