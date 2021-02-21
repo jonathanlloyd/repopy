@@ -19,7 +19,6 @@ class Person:
     person_id: str
     name: str
     age: int
-    soft_deleted_at: Optional[datetime] = None
 
 
 @dataclass
@@ -166,3 +165,55 @@ def test_delete() -> None:
 
     # Then the middleware should have been called
     assert middleware_was_called
+
+
+def test_multiple_middleware() -> None:
+    # Given a middleware
+    before_next_func = []
+    after_next_func = []
+
+    class Middleware(RepositoryMiddleware):
+        name: str
+
+        def __init__(self, name: str) -> None:
+            self.name = name
+
+        def add(
+            self,
+            entities: List[Person],
+            next_func: AddMethodType[Person],
+        ):
+            before_next_func.append(self.name)
+            result = next_func(entities)
+            after_next_func.append(self.name)
+
+            return result
+
+    # And a repository with multiple instances of that middleware applied
+    backend: InMemory[Person] = InMemory(copy_func)
+    repository = RepositoryFactory.create_repository(
+        Person,
+        PersonFilter,
+        PersonUpdate,
+        backend,
+    )
+
+    repository = repository.with_middleware(Middleware('middleware-1'))
+    repository = repository.with_middleware(Middleware('middleware-2'))
+
+    # When the middleware is called
+    repository.add([Person(
+        person_id='1',
+        name='Alice',
+        age=27,
+    )])
+
+    # Then the middlewares should be called in the correct order
+    assert before_next_func == [
+        'middleware-2',
+        'middleware-1',
+    ]
+    assert after_next_func == [
+        'middleware-1',
+        'middleware-2',
+    ]
