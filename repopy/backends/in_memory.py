@@ -74,10 +74,10 @@ class InMemory(Generic[EntityType]):
         return num_deleted
 
     def _matches(self, filters: Mapping[str, Field], entity: EntityType): # pylint: disable=no-self-use
-        return all([
+        return all(
             getattr(entity, filter_name) == filter_value
             for filter_name, filter_value in filters.items()
-        ])
+        )
 
     def _apply_updates(self, updates, entity):
         assert self._copy_func is not None
